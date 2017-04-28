@@ -24,7 +24,16 @@
                     <compilerVersion>${java.version}</compilerVersion>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
-                    <compilerArgument>-proc:none</compilerArgument>
+                    <compilerArgs>
+					  <arg>-proc:none</arg>
+					  <!-- <arg>-XprintProcessorInfo</arg>
+					  <arg>-XprintRounds</arg> -->
+					</compilerArgs>
+                    <compilerArguments>
+	                    <XprintProcessorInfo/>
+	                    <XprintRounds/>
+	                    <processor>lombok.launch.AnnotationProcessorHider$AnnotationProcessor,com.google.auto.service.processor.AutoServiceProcessor</processor>
+	                </compilerArguments>
                 </configuration>
             </plugin>
         </plugins>
@@ -55,6 +64,12 @@
 			<version>1.16.16</version>
 			<scope>provided</scope>
 		</dependency>
+		  <dependency>
+		    <groupId>com.google.auto.service</groupId>
+		    <artifactId>auto-service</artifactId>
+		    <version>1.0-rc3</version>
+		    <optional>true</optional>
+		  </dependency>
     </dependencies>
 
 </project>

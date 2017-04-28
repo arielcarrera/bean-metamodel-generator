@@ -4,11 +4,15 @@ import java.io.IOException;
 import java.io.Writer;
 import java.net.URL;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.Filer;
+import javax.annotation.processing.Messager;
+import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
@@ -18,6 +22,8 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 
@@ -45,13 +51,13 @@ import lombok.NoArgsConstructor;
  */
 @NoArgsConstructor
 @SupportedAnnotationTypes({
-	"com.luckyend.generators.metamodel.annotations.Metamodel",
-	"com.luckyend.generators.metamodel.annotations.IgnoreMetamodel",
-	"com.luckyend.generators.metamodel.annotations.MetamodelField"
+	"com.luckyend.generators.metamodel.annotations.Metamodel"
+//	,"com.luckyend.generators.metamodel.annotations.IgnoreMetamodel",
+//	"com.luckyend.generators.metamodel.annotations.MetamodelField"
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class BeanMetamodelProcessor extends AbstractProcessor {
-
+	
     /** String used to append to the class name when a class is created */
     private static final String BEAN_METAMODEL_SUFFIX = "_BeanModel";
     
@@ -60,6 +66,23 @@ public class BeanMetamodelProcessor extends AbstractProcessor {
     
     /** String used to get properties file */
     private static final String PROPERTIES_PATH = "velocity.properties";
+    
+    
+    private Types typeUtils;
+    private Elements elementUtils;
+    private Filer filer;
+    private Messager messager;
+    private Map<String, FactoryGroupedClasses> factoryClasses = new LinkedHashMap<String, FactoryGroupedClasses>();
+
+    @Override
+    public synchronized void init(ProcessingEnvironment processingEnv) {
+      super.init(processingEnv);
+      typeUtils = processingEnv.getTypeUtils();
+      elementUtils = processingEnv.getElementUtils();
+      filer = processingEnv.getFiler();
+      messager = processingEnv.getMessager();
+    }
+    
     
     /**
      * Reads the Metamodel information and writes a full featured
@@ -115,27 +138,6 @@ public class BeanMetamodelProcessor extends AbstractProcessor {
 
 		        processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Annotated class: " + model.getQualifiedClassName(), e);
 
-		    } else if (e.getKind() == ElementKind.FIELD) {
-
-		        VariableElement varElement = (VariableElement) e;
-
-		        FieldModel field = new FieldModel();
-		        MetamodelField annotation = varElement.getAnnotation(MetamodelField.class);
-		        IgnoreMetamodel ignoreAnnotation = varElement.getAnnotation(IgnoreMetamodel.class);
-		        //if it is not the MetamodelField / IgnoreMetamodel annotations on the Class... it is skipped
-		        if(annotation == null && ignoreAnnotation == null) continue;
-		        
-		        if(annotation != null) {
-		        	field.setName(varElement.getSimpleName().toString());//eg id
-		        	field.setName(annotation.value());//eg newName
-		        	fields.add(field);
-		        }
-		        if (ignoreAnnotation != null){
-		        	field.setIgnore(true);
-		        }
-
-		        processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,"annotated field: " + field.getName() + " // real field: " + field.getRealName() + " // ignore: " + field.isIgnore(), e);
-
 		    } 
 		}
 		return model;
@@ -170,5 +172,32 @@ public class BeanMetamodelProcessor extends AbstractProcessor {
 
 		    writer.close();
 		}
+	}
+	
+	private boolean processFieldAnnotations(){
+		
+		else if (e.getKind() == ElementKind.FIELD) {
+
+	        VariableElement varElement = (VariableElement) e;
+
+	        FieldModel field = new FieldModel();
+	        MetamodelField annotation = varElement.getAnnotation(MetamodelField.class);
+	        IgnoreMetamodel ignoreAnnotation = varElement.getAnnotation(IgnoreMetamodel.class);
+	        //if it is not the MetamodelField / IgnoreMetamodel annotations on the Class... it is skipped
+	        if(annotation == null && ignoreAnnotation == null) continue;
+	        
+	        if(annotation != null) {
+	        	field.setName(varElement.getSimpleName().toString());//eg id
+	        	field.setName(annotation.value());//eg newName
+	        	fields.add(field);
+	        }
+	        if (ignoreAnnotation != null){
+	        	field.setIgnore(true);
+	        }
+
+	        processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,"annotated field: " + field.getName() + " // real field: " + field.getRealName() + " // ignore: " + field.isIgnore(), e);
+
+	    } 
+		return true;
 	}
 }
