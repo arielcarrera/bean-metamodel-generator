@@ -1,6 +1,6 @@
 package com.luckyend.generators.metamodel.client;
 
-import com.luckyend.generators.metamodel.annotations.IgnoreMetamodel;
+import com.luckyend.generators.metamodel.annotations.MetamodelIgnore;
 import com.luckyend.generators.metamodel.annotations.Metamodel;
 import com.luckyend.generators.metamodel.annotations.MetamodelField;
 
@@ -22,7 +22,7 @@ public class SampleBean {
     private enum StatusEnum { OK, DELETED };
 
     /** Identifier of Sample Bean */
-    @IgnoreMetamodel
+    @MetamodelIgnore
     @Getter @Setter
     private String id;
 

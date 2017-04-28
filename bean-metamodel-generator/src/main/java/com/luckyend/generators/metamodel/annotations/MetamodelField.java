@@ -24,4 +24,10 @@ public @interface MetamodelField {
 	 * @return Output name of the field
 	 */
 	String value() default "";
+	
+	/**
+	 * Set if the field must to be ignored
+	 * @return
+	 */
+	boolean ignore() default false;
 }

@@ -4,8 +4,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.net.URL;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
@@ -21,7 +20,6 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
@@ -33,9 +31,9 @@ import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
 
-import com.luckyend.generators.metamodel.annotations.IgnoreMetamodel;
 import com.luckyend.generators.metamodel.annotations.Metamodel;
 import com.luckyend.generators.metamodel.annotations.MetamodelField;
+import com.luckyend.generators.metamodel.annotations.MetamodelIgnore;
 import com.luckyend.generators.metamodel.model.ClassModel;
 import com.luckyend.generators.metamodel.model.FieldModel;
 
@@ -52,7 +50,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @SupportedAnnotationTypes({
 	"com.luckyend.generators.metamodel.annotations.Metamodel"
-//	,"com.luckyend.generators.metamodel.annotations.IgnoreMetamodel",
+//	,"com.luckyend.generators.metamodel.annotations.MetamodelIgnore",
 //	"com.luckyend.generators.metamodel.annotations.MetamodelField"
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
@@ -72,7 +70,7 @@ public class BeanMetamodelProcessor extends AbstractProcessor {
     private Elements elementUtils;
     private Filer filer;
     private Messager messager;
-    private Map<String, FactoryGroupedClasses> factoryClasses = new LinkedHashMap<String, FactoryGroupedClasses>();
+    private Set<ClassModel> models = new HashSet<>();
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -99,52 +97,86 @@ public class BeanMetamodelProcessor extends AbstractProcessor {
         if (annotations.isEmpty()) {
             return true;
         }
-
         try {
-            ClassModel model = null;
-            Set<FieldModel> fields = new HashSet<>();
-
-            model = prepareModel(roundEnv, model, fields);
-
-            write(model, fields);
+            prepareModel(roundEnv);
+            write();
         } catch (ResourceNotFoundException | ParseErrorException | IOException e) {
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,e.getLocalizedMessage());
+        	messager.printMessage(Diagnostic.Kind.ERROR,e.getLocalizedMessage());
         } catch (Exception e) {
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,e.getLocalizedMessage());
+        	messager.printMessage(Diagnostic.Kind.ERROR,e.getLocalizedMessage());
         }
 
         return true;
     }
 
-	private ClassModel prepareModel(RoundEnvironment roundEnv, ClassModel model,Set<FieldModel> fields) {
+    /**
+     * Prepare metamodel data
+     * @param roundEnv
+     */
+	private void prepareModel(RoundEnvironment roundEnv) {
 		for (Element e : roundEnv.getElementsAnnotatedWith(Metamodel.class)) {
-
 		    if (e.getKind() == ElementKind.CLASS) {
-
-		        model = new ClassModel();
-
+		    	ClassModel model = new ClassModel();
 		        TypeElement classElement = (TypeElement) e;
 		        PackageElement packageElement = (PackageElement) classElement.getEnclosingElement();
-		        Metamodel annotation = classElement.getAnnotation(Metamodel.class);
+		    	model.setPackageName(packageElement.getQualifiedName().toString());//eg com.luckyend.generators.metamodel.client
+		    	messager.printMessage(Diagnostic.Kind.NOTE, "Annotated class: " + model.getQualifiedClassName(), e);
 		        
+		        Metamodel annotation = classElement.getAnnotation(Metamodel.class);
 		        //if it is not the Metamodel annotation on the Class... it is skipped
-		        if(annotation == null) continue;
+		        if(annotation == null) {
+		        	messager.printMessage(Diagnostic.Kind.ERROR, "No Metamodel annotation for class: " + model.getQualifiedClassName(), e);
+		        	continue;
+		        }
 
-		        model.setPackageName(packageElement.getQualifiedName().toString());//eg com.luckyend.generators.metamodel.client
 		        model.setClassName(classElement.getSimpleName().toString());//eg Article
 		        model.setQualifiedClassName(classElement.getQualifiedName().toString()); //eg com.luckyend.generators.metamodel.client.SampleBean
 		        model.setBeanClassName(model.getClassName() + BEAN_METAMODEL_SUFFIX);//eg SampleBean_BeanModel
 		        model.setBeanQualifiedClassName(model.getQualifiedClassName() + BEAN_METAMODEL_SUFFIX);//eg com.luckyend.generators.metamodel.client.SampleBean_BeanModel
-
-		        processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Annotated class: " + model.getQualifiedClassName(), e);
-
+		        //process fields for model class
+		        model.setFields(processModelFields(classElement));
+		        
+		        models.add(model);
 		    } 
 		}
-		return model;
 	}
 
-	private void write(ClassModel model, Set<FieldModel> fields) throws IOException {
-		if (model != null) {
+	/**
+	 * Process a class element searching for fields and annotations
+	 * @param classElement
+	 * @return set of FieldModel
+	 */
+	private Set<FieldModel> processModelFields(TypeElement classElement) {
+		Set<FieldModel> fieldsModel = new HashSet<>();
+		List<? extends Element> members = elementUtils.getAllMembers(classElement);
+		for (Element element : members) {
+			if (element.getKind().equals(ElementKind.FIELD)) {
+				FieldModel fm = new FieldModel();
+				fm.setName(element.getSimpleName().toString());
+				fm.setRealName(fm.getName());
+				
+				MetamodelField metamodelField = element.getAnnotation(MetamodelField.class);
+				MetamodelIgnore ignoreAnnotation = element.getAnnotation(MetamodelIgnore.class);
+				if (metamodelField != null){
+					fm.setRealName(metamodelField.value());
+				}
+				if (ignoreAnnotation != null || (metamodelField != null && metamodelField.ignore())){
+					fm.setIgnore(true);
+					messager.printMessage(Diagnostic.Kind.NOTE,"ignored field: " + element.getSimpleName().toString());
+				}
+				fieldsModel.add(fm);
+			}
+		}
+		return fieldsModel;
+	}
+	
+
+	/**
+	 * Write Metamodel Class
+	 * @throws IOException
+	 */
+	private void write() throws IOException {
+		if (!models.isEmpty()) {
 
 		    Properties props = new Properties();
 		    URL url = this.getClass().getClassLoader().getResource(PROPERTIES_PATH);
@@ -152,52 +184,22 @@ public class BeanMetamodelProcessor extends AbstractProcessor {
 
 		    VelocityEngine ve = new VelocityEngine(props);
 		    ve.init();
-
-		    VelocityContext vc = new VelocityContext();
-
-		    vc.put("model", model);
-		    vc.put("fields", fields);
-
 		    Template vt = ve.getTemplate(TEMPLATE_PATH);
-
-		    JavaFileObject jfo = processingEnv.getFiler().createSourceFile(model.getBeanQualifiedClassName());
-
-		    processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,"creating source file: " + jfo.toUri());
-
-		    Writer writer = jfo.openWriter();
-
-		    processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,"applying velocity template: " + vt.getName());
-
-		    vt.merge(vc, writer);
-
-		    writer.close();
+		    
+		    for (ClassModel classModel : models) {
+		    	//filling template context
+		    	VelocityContext vc = new VelocityContext();
+			    vc.put("model", classModel);
+			    vc.put("fields", classModel.getFields());
+			    //creating source file with Filer
+			    JavaFileObject jfo = filer.createSourceFile(classModel.getBeanQualifiedClassName());
+			    messager.printMessage(Diagnostic.Kind.NOTE,"Creating source file: " + jfo.toUri());
+			    try(Writer writer = jfo.openWriter()) { //autoclose
+				    processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,"Applying template: " + vt.getName());
+				    vt.merge(vc, writer);
+			    }
+			}
+		    
 		}
-	}
-	
-	private boolean processFieldAnnotations(){
-		
-		else if (e.getKind() == ElementKind.FIELD) {
-
-	        VariableElement varElement = (VariableElement) e;
-
-	        FieldModel field = new FieldModel();
-	        MetamodelField annotation = varElement.getAnnotation(MetamodelField.class);
-	        IgnoreMetamodel ignoreAnnotation = varElement.getAnnotation(IgnoreMetamodel.class);
-	        //if it is not the MetamodelField / IgnoreMetamodel annotations on the Class... it is skipped
-	        if(annotation == null && ignoreAnnotation == null) continue;
-	        
-	        if(annotation != null) {
-	        	field.setName(varElement.getSimpleName().toString());//eg id
-	        	field.setName(annotation.value());//eg newName
-	        	fields.add(field);
-	        }
-	        if (ignoreAnnotation != null){
-	        	field.setIgnore(true);
-	        }
-
-	        processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,"annotated field: " + field.getName() + " // real field: " + field.getRealName() + " // ignore: " + field.isIgnore(), e);
-
-	    } 
-		return true;
 	}
 }

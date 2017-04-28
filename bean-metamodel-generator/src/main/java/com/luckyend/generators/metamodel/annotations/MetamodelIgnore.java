@@ -7,7 +7,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * IgnoreMetamodel annotation used to ignore a field from Metamodel generation
+ * MetamodelIgnore annotation used to ignore a field from Metamodel generation
  *
  * @author Ariel Carrera &lt;carreraariel@gmail.com&gt;
  * @version 1.0
@@ -16,6 +16,6 @@ import java.lang.annotation.Target;
 @Documented
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.SOURCE)
-public @interface IgnoreMetamodel {
+public @interface MetamodelIgnore {
 
 }
