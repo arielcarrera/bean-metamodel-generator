@@ -12,6 +12,7 @@ import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
@@ -31,6 +32,7 @@ import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
 
+import com.google.auto.service.AutoService;
 import com.luckyend.generators.metamodel.annotations.Metamodel;
 import com.luckyend.generators.metamodel.annotations.MetamodelField;
 import com.luckyend.generators.metamodel.annotations.MetamodelIgnore;
@@ -47,11 +49,10 @@ import lombok.NoArgsConstructor;
  * @author Ariel Carrera
  * @version 1.0
  */
+@AutoService(Processor.class)
 @NoArgsConstructor
 @SupportedAnnotationTypes({
 	"com.luckyend.generators.metamodel.annotations.Metamodel"
-//	,"com.luckyend.generators.metamodel.annotations.MetamodelIgnore",
-//	"com.luckyend.generators.metamodel.annotations.MetamodelField"
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class BeanMetamodelProcessor extends AbstractProcessor {
@@ -65,13 +66,15 @@ public class BeanMetamodelProcessor extends AbstractProcessor {
     /** String used to get properties file */
     private static final String PROPERTIES_PATH = "velocity.properties";
     
+    private static final boolean CLAIMED_EXCLUSIVELY = false;
+    private static final boolean NOT_CLAIMED_EXCLUSIVELY = true;	
     
     private Types typeUtils;
     private Elements elementUtils;
     private Filer filer;
     private Messager messager;
     private Set<ClassModel> models = new HashSet<>();
-
+    
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
       super.init(processingEnv);
@@ -93,29 +96,27 @@ public class BeanMetamodelProcessor extends AbstractProcessor {
      */
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-
-        if (annotations.isEmpty()) {
-            return true;
+    	
+    	if (!roundEnv.processingOver() && !annotations.isEmpty()) {        	
+	        try {
+	            prepareModel(annotations, roundEnv);
+	            write();
+	        } catch (ResourceNotFoundException | ParseErrorException | IOException e) {
+	        	messager.printMessage(Diagnostic.Kind.ERROR,e.getLocalizedMessage());
+	        } catch (Exception e) {
+	        	messager.printMessage(Diagnostic.Kind.ERROR,e.getLocalizedMessage());
+	        }
         }
-        try {
-            prepareModel(roundEnv);
-            write();
-        } catch (ResourceNotFoundException | ParseErrorException | IOException e) {
-        	messager.printMessage(Diagnostic.Kind.ERROR,e.getLocalizedMessage());
-        } catch (Exception e) {
-        	messager.printMessage(Diagnostic.Kind.ERROR,e.getLocalizedMessage());
-        }
-
-        return true;
+        return CLAIMED_EXCLUSIVELY;
     }
 
     /**
      * Prepare metamodel data
      * @param roundEnv
      */
-	private void prepareModel(RoundEnvironment roundEnv) {
+	private void prepareModel(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
 		for (Element e : roundEnv.getElementsAnnotatedWith(Metamodel.class)) {
-		    if (e.getKind() == ElementKind.CLASS) {
+			if (e.getKind() == ElementKind.CLASS) {
 		    	ClassModel model = new ClassModel();
 		        TypeElement classElement = (TypeElement) e;
 		        PackageElement packageElement = (PackageElement) classElement.getEnclosingElement();
@@ -137,7 +138,7 @@ public class BeanMetamodelProcessor extends AbstractProcessor {
 		        model.setFields(processModelFields(classElement));
 		        
 		        models.add(model);
-		    } 
+		    }
 		}
 	}
 

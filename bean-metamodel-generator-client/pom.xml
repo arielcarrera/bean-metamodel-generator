@@ -16,6 +16,27 @@
 
     <build>
         <plugins>
+        	<!-- <plugin>
+		      <groupId>org.bsc.maven</groupId>
+		      <artifactId>maven-processor-plugin</artifactId>
+		      <version>3.3.1</version>
+		      <executions>
+		        <execution>
+		          <id>process</id>
+		          <goals>
+		            <goal>process</goal>
+		          </goals>
+		          <phase>generate-sources</phase>
+		          <configuration>
+		          	<outputDirectory>src/main/generated</outputDirectory>
+		            <processors>
+		               <processor>com.luckyend.generators.metamodel.processors.BeanMetamodelProcessor</processor>
+		            </processors>
+		          </configuration>
+		        </execution>
+		      </executions>
+		    </plugin>-->
+		    
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -24,11 +45,20 @@
                     <compilerVersion>${java.version}</compilerVersion>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
-                    <compilerArguments>
-                        <XprintProcessorInfo/>
-                        <XprintRounds/>
-                        <processor>lombok.launch.AnnotationProcessorHider$AnnotationProcessor,com.luckyend.generators.metamodel.processors.BeanMetamodelProcessor</processor>
-                    </compilerArguments>
+                    <generatedSourcesDirectory>src/main/generated</generatedSourcesDirectory>
+
+                    <!-- <compilerArguments> -->
+                        <!-- <processor>lombok.launch.AnnotationProcessorHider$AnnotationProcessor,com.luckyend.generators.metamodel.processors.BeanMetamodelProcessor</processor> -->
+                    	 <!--<processor>com.luckyend.generators.metamodel.processors.BeanMetamodelProcessor</processor> -->
+                    <!-- </compilerArguments> -->
+                    <dependencies>
+				        <dependency>
+				            <groupId>com.luckyend.generators</groupId>
+				            <artifactId>bean-metamodel-generator</artifactId>
+				            <version>1.0-SNAPSHOT</version>
+				            <scope>compile</scope>
+				        </dependency>
+					</dependencies>
                 </configuration>
             </plugin>
         </plugins>
@@ -45,14 +75,15 @@
             <groupId>com.luckyend.generators</groupId>
             <artifactId>bean-metamodel-generator</artifactId>
             <version>1.0-SNAPSHOT</version>
-            <scope>compile</scope>
+            <scope>test</scope>
         </dependency>
+        <!-- 
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<version>1.16.16</version>
 			<scope>provided</scope>
-		</dependency>
+		</dependency> -->
 		<dependency>
 		    <groupId>junit</groupId>
 		    <artifactId>junit</artifactId>
