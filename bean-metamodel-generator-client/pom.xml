@@ -12,31 +12,12 @@
 
     <properties>
         <java.version>1.8</java.version>
+        <m2e.apt.activation>jdt_apt</m2e.apt.activation>
+        <maven.test.skip>true</maven.test.skip>
     </properties>
 
     <build>
         <plugins>
-        	<!-- <plugin>
-		      <groupId>org.bsc.maven</groupId>
-		      <artifactId>maven-processor-plugin</artifactId>
-		      <version>3.3.1</version>
-		      <executions>
-		        <execution>
-		          <id>process</id>
-		          <goals>
-		            <goal>process</goal>
-		          </goals>
-		          <phase>generate-sources</phase>
-		          <configuration>
-		          	<outputDirectory>src/main/generated</outputDirectory>
-		            <processors>
-		               <processor>com.luckyend.generators.metamodel.processors.BeanMetamodelProcessor</processor>
-		            </processors>
-		          </configuration>
-		        </execution>
-		      </executions>
-		    </plugin>-->
-		    
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -46,19 +27,13 @@
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                     <generatedSourcesDirectory>src/main/generated</generatedSourcesDirectory>
-
-                    <!-- <compilerArguments> -->
-                        <!-- <processor>lombok.launch.AnnotationProcessorHider$AnnotationProcessor,com.luckyend.generators.metamodel.processors.BeanMetamodelProcessor</processor> -->
-                    	 <!--<processor>com.luckyend.generators.metamodel.processors.BeanMetamodelProcessor</processor> -->
-                    <!-- </compilerArguments> -->
-                    <dependencies>
-				        <dependency>
-				            <groupId>com.luckyend.generators</groupId>
+                    <annotationProcessorPaths>
+                        <annotationProcessorPath>
+	               			<groupId>com.luckyend.generators</groupId>
 				            <artifactId>bean-metamodel-generator</artifactId>
-				            <version>1.0-SNAPSHOT</version>
-				            <scope>compile</scope>
-				        </dependency>
-					</dependencies>
+				            <version>${project.version}</version>
+                        </annotationProcessorPath>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
         </plugins>
@@ -75,7 +50,7 @@
             <groupId>com.luckyend.generators</groupId>
             <artifactId>bean-metamodel-generator</artifactId>
             <version>1.0-SNAPSHOT</version>
-            <scope>test</scope>
+            <scope>compile</scope>
         </dependency>
         <!-- 
 		<dependency>

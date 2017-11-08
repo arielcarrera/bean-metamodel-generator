@@ -20,7 +20,7 @@ import com.luckyend.generators.metamodel.processors.BeanMetamodelProcessor;
 
 public class BeanMetamodelProcessorTest {
 	
-	//@Test
+	@Test
 	public void runAnnotationProcessor() throws Exception {
 		String source = "src/main/java";
 

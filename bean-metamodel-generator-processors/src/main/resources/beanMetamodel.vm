@@ -14,9 +14,9 @@ public class ${model.beanClassName} {
 #foreach($field in $fields)
 #if(!${field.isIgnore()})
 	/**
-	 * Field name constant for attribute: ${field.realName}
+	 * Field name constant for attribute: ${field.name}
 	 */
-	public static final String ${field.name.toUpperCase()} = "${field.name}";
+	public static final String ${field.realName.toUpperCase()} = "${field.name}";
 #end
 #end
 	
@@ -37,6 +37,15 @@ public class ${model.beanClassName} {
     public static String getBeanClassName() {
         return "${model.qualifiedClassName}";
     }
+    
+    /**
+     * Gets the bean class simple name.
+     *
+     * @return the bean class name
+     */
+    public static String getBeanClassSimpleName() {
+        return "${model.className}";
+    }
 
     /**
      * Returns the list of field names for ${model.qualifiedClassName} bean.
@@ -47,7 +56,7 @@ public class ${model.beanClassName} {
         return new String[] {
 #foreach($field in $fields)
 #if(!${field.isIgnore()})
-            ${field.name.toUpperCase()}#if(${velocityHasNext}),#end
+            ${field.realName.toUpperCase()}#if(${velocityHasNext}),#end
 #end
 #end
         };

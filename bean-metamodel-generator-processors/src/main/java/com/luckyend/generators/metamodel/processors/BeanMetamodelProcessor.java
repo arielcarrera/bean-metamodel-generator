@@ -58,7 +58,7 @@ import lombok.NoArgsConstructor;
 public class BeanMetamodelProcessor extends AbstractProcessor {
 	
     /** String used to append to the class name when a class is created */
-    private static final String BEAN_METAMODEL_SUFFIX = "_BeanModel";
+    private static final String BEAN_METAMODEL_SUFFIX = "_Metamodel";
     
     /** String used to get template file */
     private static final String TEMPLATE_PATH = "beanMetamodel.vm";
